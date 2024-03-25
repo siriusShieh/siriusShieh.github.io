@@ -17,7 +17,7 @@
 
 <script id="hexo-configurations">
     var NexT = window.NexT || {};
-    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
   <meta property="og:type" content="website">
@@ -25,7 +25,7 @@
 <meta property="og:url" content="http://example.com/index.html">
 <meta property="og:site_name" content="Sirius">
 <meta property="og:locale" content="zh_CN">
-<meta property="article:author" content="Sirius">
+<meta property="article:author" content="Sirius Shieh">
 <meta name="twitter:card" content="summary">
 
 <link rel="canonical" href="http://example.com/">
@@ -145,11 +145,11 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2024/03/23/hello-world/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Sirius">
+      <meta itemprop="name" content="Sirius Shieh">
       <meta itemprop="description" content="">
     </span>
 
@@ -159,7 +159,7 @@
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
           
-            <a href="/2024/03/23/hello-world/" class="post-title-link" itemprop="url">Hello World</a>
+            <a href="/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/" class="post-title-link" itemprop="url">元空间内存泄漏问题排查记录</a>
         </h2>
 
         <div class="post-meta">
@@ -169,7 +169,7 @@
               </span>
               <span class="post-meta-item-text">发表于</span>
 
-              <time title="创建时间：2024-03-23 23:22:03" itemprop="dateCreated datePublished" datetime="2024-03-23T23:22:03+08:00">2024-03-23</time>
+              <time title="创建时间：2023-06-20 21:37:16" itemprop="dateCreated datePublished" datetime="2023-06-20T21:37:16+08:00">2023-06-20</time>
             </span>
 
           
@@ -183,20 +183,15 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-
+          <p>运维反馈线上某个应用的内存用量会一直缓慢增加，直至超过pod限制被oomKill，重启后照旧。第一反应是内存泄漏，于是首先打了内存dump分析，首先观察到堆内存用量小于设置的上限，接着看了一眼实例数较多的类，并没有发现明显可疑项（基本是String和Log4j的RingBuffer）。进一步查看配置，pod的内存限制给的比堆内存上限要高不少，既然能达到pod的上限，说明问题可能出在堆外。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -219,7 +214,7 @@
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Sirius">
+      <meta itemprop="name" content="Sirius Shieh">
       <meta itemprop="description" content="">
     </span>
 
@@ -253,38 +248,15 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>生产环境某次批量启动集群服务，启动后用户报某服务访问异常。查看Nacos，发现该服务没有实例注册，而在K8s中显示pod的状态均为已启动。<br>查看日志，发现应用在启动时试图向nacos注册，报<code>The IPv4 address &quot;nacos:8848&quot; is incorrect.</code>，由于配置未曾改变，推测可能是域名解析问题。进入容器手动curl nacos地址，可以正常访问，手动重启服务后实例又可以成功注册。<br>根据现象分析，服务在启动的一段时间内，DNS解析出现了问题，由于某种原因没能重新尝试请求服务端，导致服务一直注册不上。</p>
-<h2 id="产生原因及处置"><a href="#产生原因及处置" class="headerlink" title="产生原因及处置"></a>产生原因及处置</h2><p>跟踪代码发现，问题出在nacos client运行心跳的代码中，由于其没有正确处理隐式抛出的异常，当遇到DNS解析失败时，会导致方法异常退出，跳过向线程池登记下一次心跳的操作，使心跳任务永久终止。  </p>
-<p>当集群服务批量启动时，有几率导致coreDns短暂不可用，这就会使pod无法解析Nacos的域名。因上述bug的存在，即使coreDns恢复，实例也不会重新向Nacos发起心跳。  </p>
-<p>随后在Nacos官方GitHub中也查到了有<a target="_blank" rel="noopener" href="https://github.com/alibaba/nacos/issues/5291">issue</a>反馈这个问题，这是nacos client 1.4.1的一个bug，根据官方的指引，升级至1.4.2即可解决。</p>
-<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p><strong>nacos client 1.4.1</strong></p>
-<p>先找到心跳线程的代码<br>方法: <code>BeanReactor</code>.<code>BeatTask</code>#<code>run</code>  </p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="type">long</span> <span class="variable">nextTime</span> <span class="operator">=</span> <span class="built_in">this</span>.beatInfo.getPeriod();</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 发送心跳</span></span><br><span class="line">    <span class="type">JsonNode</span> <span class="variable">result</span> <span class="operator">=</span> BeatReactor.<span class="built_in">this</span>.serverProxy.sendBeat(<span class="built_in">this</span>.beatInfo, BeatReactor.<span class="built_in">this</span>.lightBeatEnabled);</span><br><span class="line">    <span class="type">long</span> <span class="variable">interval</span> <span class="operator">=</span> result.get(<span class="string">&quot;clientBeatInterval&quot;</span>).asLong();</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">if</span> (interval &gt; <span class="number">0L</span>) &#123;</span><br><span class="line">        nextTime = interval;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//... 处理返回值，注册服务</span></span><br><span class="line">  &#125; <span class="keyword">catch</span> (NacosException ex) &#123;</span><br><span class="line">      LogUtils.NAMING_LOGGER.error(<span class="string">&quot;[CLIENT-BEAT] failed to send beat: &#123;&#125;, code: &#123;&#125;, msg: &#123;&#125;&quot;</span>, <span class="keyword">new</span> <span class="title class_">Object</span>[] &#123;</span><br><span class="line">              JacksonUtils.toJson(<span class="built_in">this</span>.beatInfo), Integer.valueOf(ex.getErrCode()), ex.getErrMsg()</span><br><span class="line">          &#125;);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="comment">// 安排下一次心跳</span></span><br><span class="line">  BeatReactor.<span class="built_in">this</span>.executorService.schedule(<span class="keyword">new</span> <span class="title class_">BeatTask</span>(<span class="built_in">this</span>.beatInfo), nextTime, TimeUnit.MILLISECONDS);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>可以看到catch中只有<code>NacosException</code>，那么在DNS解析失败的时候，程序是如何处理的？<br>从<code>sendBeat</code>跟进去，一路走到这里：</p>
-<p>方法：<code>NamingProxy</code>#<code>reqApi</code></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> String <span class="title function_">reqApi</span><span class="params">(String api, Map&lt;String, String&gt; params, Map&lt;String, String&gt; body, List&lt;String&gt; servers, String method)</span> <span class="keyword">throws</span> NacosException &#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="type">NacosException</span> <span class="variable">exception</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">NacosException</span>();</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (StringUtils.isNotBlank(<span class="built_in">this</span>.nacosDomain)) &#123;</span><br><span class="line">    <span class="comment">// 按域名调用</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">0</span>; i &lt; <span class="built_in">this</span>.maxRetry; i++) &#123;</span><br><span class="line">      <span class="keyword">try</span> &#123;</span><br><span class="line">        <span class="comment">// 请求服务端</span></span><br><span class="line">        <span class="keyword">return</span> callServer(api, params, body, <span class="built_in">this</span>.nacosDomain, method);</span><br><span class="line">      &#125; <span class="keyword">catch</span> (NacosException e) &#123;</span><br><span class="line">        exception = e;</span><br><span class="line">        <span class="comment">// ... 打日志</span></span><br><span class="line">      &#125; </span><br><span class="line">    &#125; </span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">// ...按地址调用 </span></span><br><span class="line">  &#125; </span><br><span class="line">  <span class="comment">// ... 打日志</span></span><br><span class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">NacosException</span>(exception.getErrCode(), <span class="string">&quot;failed to req API:&quot;</span> + api + <span class="string">&quot; after all servers(&quot;</span> + servers + <span class="string">&quot;) tried: &quot;</span> + exception</span><br><span class="line">      .getMessage());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这个方法中根据是否配置了nacos域名(<code>nacosDomain</code>)来决定调用方式，然后进入<code>callServer</code>方法调用服务端<br>注意到，这里catch的也是<code>NacosException</code>，所以继续从<code>callServer</code>跟进去</p>
-<p>方法：<code>NamingProxy</code>#<code>callServer</code></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> String <span class="title function_">callServer</span><span class="params">(String api, Map&lt;String, String&gt; params, Map&lt;String, String&gt; body, String curServer, String method)</span> <span class="keyword">throws</span> NacosException &#123;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="keyword">if</span> (curServer.startsWith(<span class="string">&quot;https://&quot;</span>) || curServer.startsWith(<span class="string">&quot;http://&quot;</span>)) &#123;</span><br><span class="line">    url = curServer + api;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="comment">// 报错在下面这行</span></span><br><span class="line">    <span class="keyword">if</span> (!IPUtil.containsPort(curServer)) &#123;</span><br><span class="line">      curServer = curServer + <span class="string">&quot;:&quot;</span> + <span class="built_in">this</span>.serverPort;</span><br><span class="line">    &#125;</span><br><span class="line">    url = NamingHttpClientManager.getInstance().getPrefix() + curServer + api;</span><br><span class="line">  &#125; </span><br><span class="line"></span><br><span class="line">  </span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// 发起请求</span></span><br><span class="line">    HttpRestResult&lt;String&gt; restResult = <span class="built_in">this</span>.nacosRestTemplate.exchangeForm(url, header, Query.newInstance().initParams(params), body, method, String.class);</span><br><span class="line">    <span class="comment">// ... 处理返回值</span></span><br><span class="line">  &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">    LogUtils.NAMING_LOGGER.error(<span class="string">&quot;[NA] failed to request&quot;</span>, e);</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">NacosException</span>(<span class="number">500</span>, e);</span><br><span class="line">  &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>报错的地方在<code>IPUtil.containsPort</code>里面，这个方法主要用来判断地址字符串中是否包含端口，注意到它并不在try catch中<br>跟进去后，我们定位到<code>splitIPPortStr</code>这个方法</p>
-<p>方法：<code>IPUtil</code>#<code>splitIPPortStr</code></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> String[] splitIPPortStr(String str) &#123;</span><br><span class="line">  String[] serverAddrArr;</span><br><span class="line">  <span class="keyword">if</span> (StringUtils.isBlank(str))</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">IllegalArgumentException</span>(<span class="string">&quot;ip and port string cannot be empty!&quot;</span>); </span><br><span class="line">  <span class="keyword">if</span> (str.startsWith(<span class="string">&quot;[&quot;</span>) &amp;&amp; StringUtils.containsIgnoreCase(str, <span class="string">&quot;]&quot;</span>)) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    serverAddrArr = str.split(<span class="string">&quot;:&quot;</span>);</span><br><span class="line">    <span class="keyword">if</span> (serverAddrArr.length &gt; <span class="number">2</span>)</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">IllegalArgumentException</span>(<span class="string">&quot;The IP address(\&quot;&quot;</span> + str + <span class="string">&quot;\&quot;) is incorrect. If it is an IPv6 address, please use [] to enclose the IP part!&quot;</span>); </span><br><span class="line">    <span class="keyword">if</span> (!isIPv4(serverAddrArr[<span class="number">0</span>]))</span><br><span class="line">      <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">IllegalArgumentException</span>(<span class="string">&quot;The IPv4 address(\&quot;&quot;</span> + serverAddrArr[<span class="number">0</span>] + <span class="string">&quot;\&quot;) is incorrect.&quot;</span>); </span><br><span class="line">  &#125; </span><br><span class="line">  <span class="keyword">return</span> serverAddrArr;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这里会走else中的逻辑，到<code>isIPv4</code>这一行，这个方法返回false后，接着就会抛出<code>IllegalArgumentException</code>，而这是一个<code>RuntimeException</code>. <strong>这是问题的关键，运行时异常的传播是隐式的，如果没有catch能够涵盖，它就会一直向上抛出</strong><br>问题已接近明了，那么为什么是<code>isIPv4</code>这个方法返回false呢？原因就在于其内部用到了<code>InetAddress</code>去做了域名解析：</p>
-<p>方法：<code>IPUtil</code>#<code>isIPv4</code></p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="type">boolean</span> <span class="title function_">isIPv4</span><span class="params">(String addr)</span> &#123;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> ((InetAddress.getByName(addr).getAddress()).length == <span class="number">4</span>);</span><br><span class="line">  &#125; <span class="keyword">catch</span> (UnknownHostException e) &#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">  &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>至此已整个链条已经完整：当域名解析失败，<code>isIPv4</code>返回false，导致<code>IllegalArgumentException</code>抛出，上层未能将其捕获，最终导致心跳方法的异常结束。</p>
-<p><strong>nacos client 1.4.2</strong></p>
-<p>1.4.2版本在这个问题上，主要是在顶层做了异常捕获的增强</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">run</span><span class="params">()</span> &#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="type">long</span> <span class="variable">nextTime</span> <span class="operator">=</span> <span class="built_in">this</span>.beatInfo.getPeriod();</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="type">JsonNode</span> <span class="variable">result</span> <span class="operator">=</span> BeatReactor.<span class="built_in">this</span>.serverProxy.sendBeat(<span class="built_in">this</span>.beatInfo, BeatReactor.<span class="built_in">this</span>.lightBeatEnabled);</span><br><span class="line">    <span class="type">long</span> <span class="variable">interval</span> <span class="operator">=</span> result.get(<span class="string">&quot;clientBeatInterval&quot;</span>).asLong();</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">if</span> (interval &gt; <span class="number">0L</span>)</span><br><span class="line">      nextTime = interval; </span><br><span class="line">    <span class="comment">// ... </span></span><br><span class="line">  &#125; <span class="keyword">catch</span> (NacosException ex) &#123;</span><br><span class="line">    LogUtils.NAMING_LOGGER.error(<span class="string">&quot;[CLIENT-BEAT] failed to send beat: &#123;&#125;, code: &#123;&#125;, msg: &#123;&#125;&quot;</span>, <span class="keyword">new</span> <span class="title class_">Object</span>[] &#123; JacksonUtils.toJson(<span class="built_in">this</span>.beatInfo), Integer.valueOf(ex.getErrCode()), ex.getErrMsg() &#125;);</span><br><span class="line">  &#125; <span class="keyword">catch</span> (Exception unknownEx) &#123;</span><br><span class="line">    LogUtils.NAMING_LOGGER.error(<span class="string">&quot;[CLIENT-BEAT] failed to send beat: &#123;&#125;, unknown exception msg: &#123;&#125;&quot;</span>, <span class="keyword">new</span> <span class="title class_">Object</span>[] &#123; JacksonUtils.toJson(<span class="built_in">this</span>.beatInfo), unknownEx.getMessage(), unknownEx &#125;);</span><br><span class="line">  &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    BeatReactor.<span class="built_in">this</span>.executorService.schedule(<span class="keyword">new</span> <span class="title class_">BeatTask</span>(<span class="built_in">this</span>.beatInfo), nextTime, TimeUnit.MILLISECONDS);</span><br><span class="line">  &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>可以看到其在catch中加上了<code>catch(Exception)</code>，并把schedule的动作放在了<code>finally</code>中，保证了心跳会继续执行。</p>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>个人分析，问题的主要原因有二：</p>
-<ol>
-<li><p>在服务器地址校验阶段，主动进行了域名解析，使问题暴露于发起请求的try catch之外。实际上在1.4.2版本，<code>containsPort</code>方法内部已经不再对IPv4地址进行域名解析了。</p>
-</li>
-<li><p>方法内部抛出<code>RuntimeException</code>，上层代码未能捕获。这种隐蔽的异常经常会被忽略，尤其是调用栈比较深的情况，又是在通用方法内部，很难注意到。所以复杂的代码一定要做好兜底，尽可能将异常面覆盖全。</p>
-</li>
-</ol>
-
+          <p>生产环境某次批量启动集群服务，启动后用户报某服务访问异常。查看Nacos，发现该服务没有实例注册，而在K8s中显示pod的状态均为已启动。<br>查看日志，发现应用在启动时试图向nacos注册，报<code>The IPv4 address &quot;nacos:8848&quot; is incorrect.</code>，由于配置未曾改变，推测可能是域名解析问题。进入容器手动curl nacos地址，可以正常访问，手动重启服务后实例又可以成功注册。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2023/04/06/%E7%94%B1DNS%E6%95%85%E9%9A%9C%E5%BC%95%E8%B5%B7%E7%9A%84Nacos%E6%B3%A8%E5%86%8C%E9%97%AE%E9%A2%98/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -357,7 +329,7 @@
 
       <div class="site-overview-wrap sidebar-panel">
         <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
-  <p class="site-author-name" itemprop="name">Sirius</p>
+  <p class="site-author-name" itemprop="name">Sirius Shieh</p>
   <div class="site-description" itemprop="description"></div>
 </div>
 <div class="site-state-wrap motion-element">
@@ -371,6 +343,11 @@
       </div>
   </nav>
 </div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="mailto:sirius_shieh@163.com" title="E-Mail → mailto:sirius_shieh@163.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
 
 
 
@@ -397,10 +374,8 @@
   <span class="with-love">
     <i class="fa fa-heart"></i>
   </span>
-  <span class="author" itemprop="copyrightHolder">Sirius</span>
+  <span class="author" itemprop="copyrightHolder">Sirius Shieh</span>
 </div>
-  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://mist.theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> 强力驱动
-  </div>
 
         
 
