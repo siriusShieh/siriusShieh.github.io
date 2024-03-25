@@ -28,9 +28,9 @@
 <meta property="og:description" content="运维反馈线上某个应用的内存用量会一直缓慢增加，直至超过pod限制被oomKill，重启后照旧。第一反应是内存泄漏，于是首先打了内存dump分析，首先观察到堆内存用量小于设置的上限，接着看了一眼实例数较多的类，并没有发现明显可疑项（基本是String和Log4j的RingBuffer）。进一步查看配置，pod的内存限制给的比堆内存上限要高不少，既然能达到pod的上限，说明问题可能出在堆外。">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/Snipaste_2024-03-26_00-19-52.jpg">
-<meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/20240326002142.png">
+<meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/20240326002926.png">
 <meta property="article:published_time" content="2023-06-20T13:37:16.000Z">
-<meta property="article:modified_time" content="2024-03-25T16:21:53.258Z">
+<meta property="article:modified_time" content="2024-03-25T16:29:35.519Z">
 <meta property="article:author" content="Sirius Shieh">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/Snipaste_2024-03-26_00-19-52.jpg">
@@ -196,8 +196,8 @@
 <h2 id="问题定位"><a href="#问题定位" class="headerlink" title="问题定位"></a>问题定位</h2><p>使用MAT查看dump文件时，偶然发现存在大量名为”script…”的类，多数都没有实例</p>
 <p><img src="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/Snipaste_2024-03-26_00-19-52.jpg"></p>
 <p>首先查看其类加载器，都属于<code>groovy.lang.GroovyClassLoader$InnerLoader</code>的实例，说明问题出在Groovy动态类加载上。<br>查看<code>InnerLoader</code>的path to GC Roots，结果如图（只看强引用）：</p>
-<p><img src="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/20240326002142.png"></p>
-<p>从上面的结果中我们可以得出，元空间中之所以有这么多Script类没有被回收，是因为它被各自所属的<code>InnerLoader</code>加载，而这些<code>InnerLoader</code>又被<code>GroovyClassLoader</code>对象的内部缓存中所保存的Script类对象所持有，这个<code>GroovyClassLoader</code>对象被项目代码中一个名为<code>GroovyFormulaCalculator</code>的类的实例所持有，为static属性，属于GC Root.</p>
+<p><img src="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/20240326002926.png"></p>
+<p>从上面的结果中我们可以得出，元空间中之所以有这么多Script类没有被回收，是因为它被各自所属的<code>InnerLoader</code>加载，而这些<code>InnerLoader</code>又被<code>GroovyClassLoader</code>对象的内部缓存<code>classCache</code>中所保存的Script类对象所持有，这个<code>GroovyClassLoader</code>对象被项目代码中一个名为<code>GroovyFormulaCalculator</code>的类的实例所持有，为static属性，属于GC Root.</p>
 <h2 id="代码分析"><a href="#代码分析" class="headerlink" title="代码分析"></a>代码分析</h2><p>那么问题多半就出在项目里这个<code>GroovyFormulaCalculator</code>类了，看代码，应该是用来计算一些报表中的表达式的。<br>在计算方法中，找到了使用Groovy的地方：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> Script <span class="title function_">getScript</span><span class="params">(String formula)</span> <span class="keyword">throws</span> BizException &#123;</span><br><span class="line">	<span class="keyword">try</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> (Script) getGroovyScriptClass(formula).newInstance();</span><br><span class="line">	&#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">		<span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">BizException</span>(e);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>这个方法负责获取一个Groovy Script对象，调用<code>getGroovyScriptClass</code>方法获取一个Script类，之后调用<code>newInstance</code>创建Script对象，这样写肯定会重复创建，不过这跟元空间关系不大，还是回头从<code>getGroovyScriptClass</code>跟进去看看：</p>
