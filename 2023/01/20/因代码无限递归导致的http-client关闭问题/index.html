@@ -20,28 +20,32 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta property="og:type" content="website">
-<meta property="og:title" content="Sirius">
-<meta property="og:url" content="http://example.com/index.html">
+  <meta name="description" content="测试环境某服务突然所有对外访问都报connection pool shut down，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为MainClientExec类的execute方法的异常处理所致。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一次http client连接池异常关闭问题排查">
+<meta property="og:url" content="http://example.com/2023/01/20/%E5%9B%A0%E4%BB%A3%E7%A0%81%E6%97%A0%E9%99%90%E9%80%92%E5%BD%92%E5%AF%BC%E8%87%B4%E7%9A%84http-client%E5%85%B3%E9%97%AD%E9%97%AE%E9%A2%98/index.html">
 <meta property="og:site_name" content="Sirius">
+<meta property="og:description" content="测试环境某服务突然所有对外访问都报connection pool shut down，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为MainClientExec类的execute方法的异常处理所致。">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-20T13:46:16.000Z">
+<meta property="article:modified_time" content="2024-03-27T15:38:24.594Z">
 <meta property="article:author" content="Sirius Shieh">
 <meta name="twitter:card" content="summary">
 
-<link rel="canonical" href="http://example.com/">
+<link rel="canonical" href="http://example.com/2023/01/20/%E5%9B%A0%E4%BB%A3%E7%A0%81%E6%97%A0%E9%99%90%E9%80%92%E5%BD%92%E5%AF%BC%E8%87%B4%E7%9A%84http-client%E5%85%B3%E9%97%AD%E9%97%AE%E9%A2%98/">
 
 
 <script id="page-configurations">
   // https://hexo.io/docs/variables.html
   CONFIG.page = {
     sidebar: "",
-    isHome : true,
-    isPost : false,
+    isHome : false,
+    isPost : true,
     lang   : 'zh-CN'
   };
 </script>
 
-  <title>Sirius</title>
+  <title>一次http client连接池异常关闭问题排查 | Sirius</title>
   
 
 
@@ -139,139 +143,10 @@
         <div class="content-wrap">
           
 
-          <div class="content index posts-expand">
+          <div class="content post posts-expand">
             
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Sirius Shieh">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Sirius">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/" class="post-title-link" itemprop="url">元空间内存泄漏问题排查记录</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-06-20 21:37:16" itemprop="dateCreated datePublished" datetime="2023-06-20T21:37:16+08:00">2023-06-20</time>
-            </span>
-
-          
-
-        </div>
-      </header>
 
     
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>运维反馈线上某个应用的内存用量会一直缓慢增加，直至超过pod限制被oomKill，重启后照旧。第一反应是内存泄漏，于是首先打了内存dump分析，首先观察到堆内存用量小于设置的上限，接着看了一眼实例数较多的类，并没有发现明显可疑项（基本是String和Log4j的RingBuffer）。进一步查看配置，pod的内存限制给的比堆内存上限要高不少，既然能达到pod的上限，说明问题可能出在堆外。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
-  
-  
-  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2023/04/06/%E7%94%B1DNS%E6%95%85%E9%9A%9C%E5%BC%95%E8%B5%B7%E7%9A%84Nacos%E6%B3%A8%E5%86%8C%E9%97%AE%E9%A2%98/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Sirius Shieh">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Sirius">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/04/06/%E7%94%B1DNS%E6%95%85%E9%9A%9C%E5%BC%95%E8%B5%B7%E7%9A%84Nacos%E6%B3%A8%E5%86%8C%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">由DNS故障引起的Nacos注册问题</a>
-        </h2>
-
-        <div class="post-meta">
-            <span class="post-meta-item">
-              <span class="post-meta-item-icon">
-                <i class="far fa-calendar"></i>
-              </span>
-              <span class="post-meta-item-text">发表于</span>
-
-              <time title="创建时间：2023-04-06 22:08:50" itemprop="dateCreated datePublished" datetime="2023-04-06T22:08:50+08:00">2023-04-06</time>
-            </span>
-
-          
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-          <p>生产环境某次批量启动集群服务，启动后用户报某服务访问异常。查看Nacos，发现该服务没有实例注册，而在K8s中显示pod的状态均为已启动。<br>查看日志，发现应用在启动时试图向nacos注册，报<code>The IPv4 address &quot;nacos:8848&quot; is incorrect.</code>，由于配置未曾改变，推测可能是域名解析问题。进入容器手动curl nacos地址，可以正常访问，手动重启服务后实例又可以成功注册。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/04/06/%E7%94%B1DNS%E6%95%85%E9%9A%9C%E5%BC%95%E8%B5%B7%E7%9A%84Nacos%E6%B3%A8%E5%86%8C%E9%97%AE%E9%A2%98/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-      <footer class="post-footer">
-        <div class="post-eof"></div>
-      </footer>
-  </article>
-  
-  
-  
-
-      
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
@@ -287,10 +162,9 @@
       <meta itemprop="name" content="Sirius">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          
-            <a href="/2023/01/20/%E5%9B%A0%E4%BB%A3%E7%A0%81%E6%97%A0%E9%99%90%E9%80%92%E5%BD%92%E5%AF%BC%E8%87%B4%E7%9A%84http-client%E5%85%B3%E9%97%AD%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">一次http client连接池异常关闭问题排查</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          一次http client连接池异常关闭问题排查
+        </h1>
 
         <div class="post-meta">
             <span class="post-meta-item">
@@ -313,30 +187,46 @@
     <div class="post-body" itemprop="articleBody">
 
       
-          <p>测试环境某服务突然所有对外访问都报<code>connection pool shut down</code>，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为<code>MainClientExec</code>类的<code>execute</code>方法的异常处理所致。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2023/01/20/%E5%9B%A0%E4%BB%A3%E7%A0%81%E6%97%A0%E9%99%90%E9%80%92%E5%BD%92%E5%AF%BC%E8%87%B4%E7%9A%84http-client%E5%85%B3%E9%97%AD%E9%97%AE%E9%A2%98/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
+        <p>测试环境某服务突然所有对外访问都报<code>connection pool shut down</code>，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为<code>MainClientExec</code>类的<code>execute</code>方法的异常处理所致。</p>
+<span id="more"></span>
+<p><code>execute</code>方法的catch部分代码如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> ConnectionShutdownException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> HttpException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> IOException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> RuntimeException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> Error error) &#123;</span><br><span class="line">    connManager.shutdown();</span><br><span class="line">    <span class="keyword">throw</span> error;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>着重看最后一部分catch Error，调用了<code>connManager</code>的<code>shutdown</code>方法关闭连接池。</p>
+<p>如果程序是执行到了这里，那么肯定出现了某些<code>Error</code>，继续往前翻日志，果然发现有请求报<code>StackOverflowError</code>，找到代码后经过一番分析，最终发现了问题产生的过程：</p>
+<ol>
+<li>该接口通过递归调用查询数据，返回一个树形结构</li>
+<li>在递归中用到了restTemplate执行外部请求处理数据，其内部即为http client</li>
+<li>某些数据异常成环，导致代码开始无限递归，最后发生了栈溢出</li>
+<li>栈溢出发生的位置正好在<code>MainClientExec</code>的<code>execute</code>方法中，导致执行catch代码，关闭了连接池</li>
+<li>后续所有的外部调用都无法正常进行</li>
+</ol>
+<p>实际上当Error发生时，意味着JVM可能发生了较严重的问题，并不能保证代码的正常执行，一般来说不建议使用catch Error。这里http client的处理应该是在Error时尽最大努力关闭连接池以避免继续占用连接，只是当问题“没那么严重”时，就会发生这种程序还在跑着而连接池已经关掉了的情况。当然，最终的问题出在程序，设计之初没有考虑到数据成环的情况，当发现问题时，代码已经极其复杂而难于改动。</p>
+<p>由于已经上线的业务代码改动风险比较大，最后的处理是修复了会引起异常数据的代码，并在健康检查中增加了对http client的探活，确保服务在出问题时能够正常重启。</p>
+
     </div>
 
     
     
     
+
       <footer class="post-footer">
-        <div class="post-eof"></div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item"></div>
+      <div class="post-nav-item">
+    <a href="/2023/04/06/%E7%94%B1DNS%E6%95%85%E9%9A%9C%E5%BC%95%E8%B5%B7%E7%9A%84Nacos%E6%B3%A8%E5%86%8C%E9%97%AE%E9%A2%98/" rel="next" title="由DNS故障引起的Nacos注册问题">
+      由DNS故障引起的Nacos注册问题 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
       </footer>
+    
   </article>
   
   
-  
-
-
   
 
 
