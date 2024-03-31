@@ -20,15 +20,15 @@
     var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
   </script>
 
-  <meta name="description" content="测试环境某服务突然所有对外访问都报connection pool shut down，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为MainClientExec类的execute方法的异常处理所致。">
+  <meta name="description" content="测试环境某服务突然所有对外访问都报connection pool shut down，跟踪日志堆栈，经过排查，问题竟然是一个递归调用方法引起的。">
 <meta property="og:type" content="article">
-<meta property="og:title" content="一次http client连接池异常关闭问题排查">
+<meta property="og:title" content="无限递归导致的http client连接池关闭">
 <meta property="og:url" content="http://example.com/2023/01/20/%E5%9B%A0%E4%BB%A3%E7%A0%81%E6%97%A0%E9%99%90%E9%80%92%E5%BD%92%E5%AF%BC%E8%87%B4%E7%9A%84http-client%E5%85%B3%E9%97%AD%E9%97%AE%E9%A2%98/index.html">
 <meta property="og:site_name" content="Sirius">
-<meta property="og:description" content="测试环境某服务突然所有对外访问都报connection pool shut down，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为MainClientExec类的execute方法的异常处理所致。">
+<meta property="og:description" content="测试环境某服务突然所有对外访问都报connection pool shut down，跟踪日志堆栈，经过排查，问题竟然是一个递归调用方法引起的。">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2023-01-20T13:46:16.000Z">
-<meta property="article:modified_time" content="2024-03-27T15:38:24.594Z">
+<meta property="article:modified_time" content="2024-03-31T06:44:27.255Z">
 <meta property="article:author" content="Sirius Shieh">
 <meta name="twitter:card" content="summary">
 
@@ -45,7 +45,7 @@
   };
 </script>
 
-  <title>一次http client连接池异常关闭问题排查 | Sirius</title>
+  <title>无限递归导致的http client连接池关闭 | Sirius</title>
   
 
 
@@ -163,7 +163,7 @@
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          一次http client连接池异常关闭问题排查
+          无限递归导致的http client连接池关闭
         </h1>
 
         <div class="post-meta">
@@ -187,11 +187,12 @@
     <div class="post-body" itemprop="articleBody">
 
       
-        <p>测试环境某服务突然所有对外访问都报<code>connection pool shut down</code>，跟踪日志堆栈，问题发生在http client获取连接前检查阶段，连接池状态为关闭。查看http client的代码，怀疑为<code>MainClientExec</code>类的<code>execute</code>方法的异常处理所致。</p>
+        <p>测试环境某服务突然所有对外访问都报<code>connection pool shut down</code>，跟踪日志堆栈，经过排查，问题竟然是一个递归调用方法引起的。</p>
 <span id="more"></span>
+<p>报错发生在http client获取连接阶段，意为连接池已被关闭。查看http client的代码，怀疑为<code>MainClientExec</code>类的<code>execute</code>方法的异常处理所致。</p>
 <p><code>execute</code>方法的catch部分代码如下：</p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> ConnectionShutdownException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> HttpException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> IOException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> RuntimeException ex) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125; <span class="keyword">catch</span> (<span class="keyword">final</span> Error error) &#123;</span><br><span class="line">    connManager.shutdown();</span><br><span class="line">    <span class="keyword">throw</span> error;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>着重看最后一部分catch Error，调用了<code>connManager</code>的<code>shutdown</code>方法关闭连接池。</p>
+<p>最后一节是catch Error，并调用<code>connManager</code>的<code>shutdown</code>方法关闭连接池。</p>
 <p>如果程序是执行到了这里，那么肯定出现了某些<code>Error</code>，继续往前翻日志，果然发现有请求报<code>StackOverflowError</code>，找到代码后经过一番分析，最终发现了问题产生的过程：</p>
 <ol>
 <li>该接口通过递归调用查询数据，返回一个树形结构</li>
@@ -200,8 +201,8 @@
 <li>栈溢出发生的位置正好在<code>MainClientExec</code>的<code>execute</code>方法中，导致执行catch代码，关闭了连接池</li>
 <li>后续所有的外部调用都无法正常进行</li>
 </ol>
-<p>实际上当Error发生时，意味着JVM可能发生了较严重的问题，并不能保证代码的正常执行，一般来说不建议使用catch Error。这里http client的处理应该是在Error时尽最大努力关闭连接池以避免继续占用连接，只是当问题“没那么严重”时，就会发生这种程序还在跑着而连接池已经关掉了的情况。当然，最终的问题出在程序，设计之初没有考虑到数据成环的情况，当发现问题时，代码已经极其复杂而难于改动。</p>
-<p>由于已经上线的业务代码改动风险比较大，最后的处理是修复了会引起异常数据的代码，并在健康检查中增加了对http client的探活，确保服务在出问题时能够正常重启。</p>
+<p>虽然栈溢出错误在多数情况下可以恢复，但http client可能统一视Error为严重类错误，会尽可能关闭连接池以避免继续占用连接资源。所以根本原因还是出在查询方法的设计上，最初没有考虑到数据成环的情况，当发现问题时，又会发现代码已经变得极其复杂，难于改动。</p>
+<p>由于已经上线的业务代码改动风险比较大，暂时修复了会引起异常数据的代码，并在健康检查中增加了对http client的探活，确保服务在出问题时能够正常重启。</p>
 
     </div>
 
@@ -292,7 +293,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-count">4</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

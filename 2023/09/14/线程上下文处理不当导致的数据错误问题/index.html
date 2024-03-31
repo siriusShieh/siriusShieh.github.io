@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="生产上某个外围系统反馈，我们系统给他们发送的数据字段中某个与租户有关的字段错乱，导致本来是X租户的数据跑到了Y租户上。获取这个字段的逻辑并不复杂，平时执行也很正常，只是隔一段时间偶然一笔会出问题。由于是偶发性问题，很难复现，我只能借助查看日志、代码埋点和走查进行分析。最终，我发现这个问题是由二方包中的一个bug引起的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="线程上下文处理不当导致的数据错误问题">
+<meta property="og:url" content="http://example.com/2023/09/14/%E7%BA%BF%E7%A8%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%A4%84%E7%90%86%E4%B8%8D%E5%BD%93%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E9%94%99%E8%AF%AF%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="Sirius">
+<meta property="og:description" content="生产上某个外围系统反馈，我们系统给他们发送的数据字段中某个与租户有关的字段错乱，导致本来是X租户的数据跑到了Y租户上。获取这个字段的逻辑并不复杂，平时执行也很正常，只是隔一段时间偶然一笔会出问题。由于是偶发性问题，很难复现，我只能借助查看日志、代码埋点和走查进行分析。最终，我发现这个问题是由二方包中的一个bug引起的。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/multitenancy.drawio%20(2).png">
+<meta property="article:published_time" content="2023-09-14T13:50:07.000Z">
+<meta property="article:modified_time" content="2024-03-31T16:00:38.550Z">
+<meta property="article:author" content="Sirius Shieh">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/multitenancy.drawio%20(2).png">
+
+<link rel="canonical" href="http://example.com/2023/09/14/%E7%BA%BF%E7%A8%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%A4%84%E7%90%86%E4%B8%8D%E5%BD%93%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E9%94%99%E8%AF%AF%E9%97%AE%E9%A2%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>线程上下文处理不当导致的数据错误问题 | Sirius</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Sirius</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/09/14/%E7%BA%BF%E7%A8%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%A4%84%E7%90%86%E4%B8%8D%E5%BD%93%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E9%94%99%E8%AF%AF%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Sirius Shieh">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Sirius">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          线程上下文处理不当导致的数据错误问题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-09-14 21:50:07" itemprop="dateCreated datePublished" datetime="2023-09-14T21:50:07+08:00">2023-09-14</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>生产上某个外围系统反馈，我们系统给他们发送的数据字段中某个与租户有关的字段错乱，导致本来是X租户的数据跑到了Y租户上。获取这个字段的逻辑并不复杂，平时执行也很正常，只是隔一段时间偶然一笔会出问题。由于是偶发性问题，很难复现，我只能借助查看日志、代码埋点和走查进行分析。最终，我发现这个问题是由二方包中的一个bug引起的。</p>
+<span id="more"></span>
+<h2 id="分析过程"><a href="#分析过程" class="headerlink" title="分析过程"></a>分析过程</h2><p>首先拉一遍代码，分析执行逻辑。负责对外的服务A收到上游的调用请求，处理一些数据后使用上游给的token调用应用B的查询接口，应用B查找到对应的租户信息，返回给服务A，服务A获取到租户，再将数据组装好发给外围系统。token中携带的是用户及所属机构的信息，这里所谓的租户也属于机构，它是一系列机构的根机构。</p>
+<p>逻辑大致如下图：</p>
+<p><img src="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/multitenancy.drawio%20(2).png"></p>
+<p>已知租户的获取逻辑只跟token有关，那么有三种可能性;<br>其一，从上游过来的token已经是错误的，<br>其二，服务A处理token发生了问题，<br>其三，服务B的接口处理有问题</p>
+<p>通过观察日志和埋点，我们排除了前两种可能性。只剩下服务B的接口没有排查，因为这个接口的处理逻辑全部被封装在二方包内，不太方便修改代码，所以先进行走查。</p>
+<p>租户查询接口核心代码如下（已经过简化处理）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> Group <span class="title function_">getTenantGroup</span><span class="params">()</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">  <span class="type">ContextHolder</span> <span class="variable">holder</span> <span class="operator">=</span> ContextHolder.getCurrent();</span><br><span class="line">  <span class="type">TenantContext</span> <span class="variable">tenantContext</span> <span class="operator">=</span> holder.getContext();</span><br><span class="line">  <span class="comment">// 若上下文中有tenantId，直接按Id查找租户</span></span><br><span class="line">  <span class="keyword">if</span> (tenantContext != <span class="literal">null</span>) &#123;</span><br><span class="line">    <span class="type">Tenant</span> <span class="variable">t</span> <span class="operator">=</span> tenantContext.getTenant();</span><br><span class="line">    <span class="type">String</span> <span class="variable">tenantId</span> <span class="operator">=</span> t.getTenantId();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (tenantId != <span class="literal">null</span>) &#123;</span><br><span class="line">      <span class="keyword">return</span> getTenantById(tenantId);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125; </span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 若上下文中没有tenant，从token中取当前机构，向上递归查找</span></span><br><span class="line">  <span class="type">Group</span> <span class="variable">current</span> <span class="operator">=</span> groupService.getCurrentGroup();</span><br><span class="line">  <span class="keyword">return</span> getTenantParentGroup(current);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p><code>ContextHolder</code>, <code>TenantContext</code>均是项目中定义的类</p>
+</blockquote>
+<p>其中有两种方式，首先会尝试直接从上下文中获取tenantId，另一种是在上下文中没有tenantId时，取token中的机构，之后调用<code>getTenantParentGroup</code>方法，它会用递归的方式查找该机构的租户。</p>
+<p>如果走的是后一种，基本不会有问题，因为每次请求进来，应用里的拦截器都会把token放到上下文，现在已知token正确，那么根据其中的机构查询根机构，结果一定是对的。</p>
+<p>那么问题就集中在<code>tenantContext</code>这个地方，看它是怎样取值的<br>在包里找到了自定义拦截器，代码大致如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">preHandle</span><span class="params">(HttpServletRequest request, HttpServletResponse response, Object handler)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">  <span class="type">ContextHolder</span> <span class="variable">holder</span> <span class="operator">=</span> ContextHolder.getCurrent();</span><br><span class="line">  <span class="type">TenantContext</span> <span class="variable">tenantContext</span> <span class="operator">=</span> holder.getContext();</span><br><span class="line">  <span class="keyword">if</span> (tenantContext == <span class="literal">null</span>) &#123;</span><br><span class="line">    <span class="type">Tenant</span> <span class="variable">tenant</span> <span class="operator">=</span> getTenant(request);</span><br><span class="line">    <span class="keyword">if</span> (tenant != <span class="literal">null</span>) &#123;</span><br><span class="line">      tenantContext = <span class="keyword">new</span> <span class="title class_">TenantContext</span>();</span><br><span class="line">      tenantContext.setTenant(tenant);</span><br><span class="line">      holder.setContext(tenantContext);</span><br><span class="line">    &#125; </span><br><span class="line">  &#125; </span><br><span class="line">  <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>preHandle中，首先获取上下文的<code>TenantContext</code>，如果没有，就从请求头中提取。需要注意是，<strong>上下文的set是有条件的，那就是<code>tenantContext</code>为空的情况下</strong>。理论上每次请求结束后，<code>tenantContext</code>都应该要被清理的，那是否存在没有清理的情况？</p>
+<p>在该类中不难找到清理上下文的逻辑：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">postHandle</span><span class="params">(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">  <span class="type">ContextHolder</span> <span class="variable">holder</span> <span class="operator">=</span> ContextHolder.getCurrent();</span><br><span class="line">  holder.clearContext();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>问题就出在这里，它重载的是<code>HandlerInterceptor</code>#<code>postHandle</code>方法</strong>.<br>我们去看<code>DispatchServlet</code>#<code>doDispatch</code>的代码就会发现，<code>postHandle</code>是在调用handler之后被执行的，<strong>但如果handler内部抛出异常，就会跳过<code>postHandle</code>直接进入catch块中</strong>。</p>
+<p>正确的方式就是改为重载<code>HandlerInterceptor</code>#<code>afterCompletion</code>方法，无论handler执行成功与否，<code>afterCompletion</code>都会被执行，它也因此更适合用来做资源清理。</p>
+<p>源码中对<code>afterCompletion</code>的描述:</p>
+<blockquote>
+<p>Callback after completion of request processing, that is, after rendering the view. Will be called on any outcome of handler execution, thus allows for proper resource cleanup.</p>
+</blockquote>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>综上，如果服务B处理请求过程中发生了报错，租户上下文就不会得到清理，这个线程收到的下一条请求就会直接使用上一次请求的租户信息。正是这个bug，导致了服务A的租户查询会在一个比较低的概率下发生数据错乱。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/" rel="prev" title="元空间内存泄漏问题排查记录">
+      <i class="fa fa-chevron-left"></i> 元空间内存泄漏问题排查记录
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%86%E6%9E%90%E8%BF%87%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">分析过程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E8%AE%BA"><span class="nav-number">2.</span> <span class="nav-text">结论</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Sirius Shieh</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="mailto:sirius_shieh@163.com" title="E-Mail → mailto:sirius_shieh@163.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Sirius Shieh</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
