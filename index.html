@@ -145,6 +145,71 @@
   
   
   <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Sirius Shieh">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Sirius">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          
+            <a href="/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/" class="post-title-link" itemprop="url">多个启动类导致Seata数据源代理不生效的问题</a>
+        </h2>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-02-03 16:52:28" itemprop="dateCreated datePublished" datetime="2024-02-03T16:52:28+08:00">2024-02-03</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+          <p>前段时间，客户反映一个全局事务报错后，某个服务的数据没有回滚。一般Seata分支二阶段回滚会打印<code>Phase two Rollbacking</code>，日志中未见类似信息。查看Seata服务端的日志，发现该服务根本没有注册分支。<br>分支注册由代理数据源执行，代理一般在SpringBoot启动时创建，会打印”Auto Proxy of [dataSource]”。观察启动日志中确实存在该信息，但调试时，发现程序走不到<code>DataSourceProxy</code>上的断点。根据上述情况推测，代理确有创建，但注入到Service的过程出了问题。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+      <footer class="post-footer">
+        <div class="post-eof"></div>
+      </footer>
+  </article>
+  
+  
+  
+
+      
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="http://example.com/2023/09/14/%E7%BA%BF%E7%A8%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%A4%84%E7%90%86%E4%B8%8D%E5%BD%93%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E9%94%99%E8%AF%AF%E9%97%AE%E9%A2%98/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -467,7 +532,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-count">5</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>

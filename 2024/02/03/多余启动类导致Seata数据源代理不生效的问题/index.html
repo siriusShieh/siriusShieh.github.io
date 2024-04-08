@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 7.1.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="前段时间，客户反映一个全局事务报错后，某个服务的数据没有回滚。一般Seata分支二阶段回滚会打印Phase two Rollbacking，日志中未见类似信息。查看Seata服务端的日志，发现该服务根本没有注册分支。分支注册由代理数据源执行，代理一般在SpringBoot启动时创建，会打印”Auto Proxy of [dataSource]”。观察启动日志中确实存在该信息，但调试时，发现程序走不">
+<meta property="og:type" content="article">
+<meta property="og:title" content="多个启动类导致Seata数据源代理不生效的问题">
+<meta property="og:url" content="http://example.com/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/index.html">
+<meta property="og:site_name" content="Sirius">
+<meta property="og:description" content="前段时间，客户反映一个全局事务报错后，某个服务的数据没有回滚。一般Seata分支二阶段回滚会打印Phase two Rollbacking，日志中未见类似信息。查看Seata服务端的日志，发现该服务根本没有注册分支。分支注册由代理数据源执行，代理一般在SpringBoot启动时创建，会打印”Auto Proxy of [dataSource]”。观察启动日志中确实存在该信息，但调试时，发现程序走不">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/seata2230.drawio.png">
+<meta property="article:published_time" content="2024-02-03T08:52:28.000Z">
+<meta property="article:modified_time" content="2024-04-08T15:36:30.236Z">
+<meta property="article:author" content="Sirius Shieh">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/seata2230.drawio.png">
+
+<link rel="canonical" href="http://example.com/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>多个启动类导致Seata数据源代理不生效的问题 | Sirius</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">Sirius</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Sirius Shieh">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Sirius">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          多个启动类导致Seata数据源代理不生效的问题
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2024-02-03 16:52:28" itemprop="dateCreated datePublished" datetime="2024-02-03T16:52:28+08:00">2024-02-03</time>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>前段时间，客户反映一个全局事务报错后，某个服务的数据没有回滚。一般Seata分支二阶段回滚会打印<code>Phase two Rollbacking</code>，日志中未见类似信息。查看Seata服务端的日志，发现该服务根本没有注册分支。<br>分支注册由代理数据源执行，代理一般在SpringBoot启动时创建，会打印”Auto Proxy of [dataSource]”。观察启动日志中确实存在该信息，但调试时，发现程序走不到<code>DataSourceProxy</code>上的断点。根据上述情况推测，代理确有创建，但注入到Service的过程出了问题。</p>
+<span id="more"></span>
+<h2 id="过程分析"><a href="#过程分析" class="headerlink" title="过程分析"></a>过程分析</h2><p>首先介绍下，Seata创建数据源代理靠的是<code>SeataAutoDataSourceProxyCreator</code>这个类，它属于后置处理器，在数据源bean初始化的后期调用，用Seata的切面创建原数据源对象的代理。</p>
+<p>经过一段时间的排查，我大致摸清了情况，有关数据源创建的简要流程见下图：</p>
+<p><img src="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/seata2230.drawio.png"></p>
+<p>下面沿着流程图解释具体发生了什么：</p>
+<ol>
+<li><p>有Service依赖数据源的bean，走创建逻辑。bean实例化后，先在三缓注册一个对象工厂，用来解决循环依赖。之后走属性赋值，初始化方法。</p>
+</li>
+<li><p>执行完数据源的初始化方法后，遍历PostProcessors执行bean的后置处理，这时我发现**有问题的程序，比无问题的旧版多了一个后置处理器<code>DataSourceInitializerPostProcessor</code>**，且顺序排在<code>SeataAutoDataSourceProxyCreator</code>前，其方法如下所示：</p>
+ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.boot.autoconfigure.jdbc.DataSourceInitializerPostProcessor</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(Object bean, String beanName)</span></span><br><span class="line">        <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">    <span class="keyword">if</span> (bean <span class="keyword">instanceof</span> DataSource) &#123;</span><br><span class="line">        <span class="comment">// force initialization of this bean as soon as we see a DataSource</span></span><br><span class="line">        <span class="built_in">this</span>.beanFactory.getBean(DataSourceInitializerInvoker.class);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> bean;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>上述这个类通过<code>beanFactory</code>加载<code>DataSourceInitializerInvoker</code>的bean，这个类属于<code>InitializingBean</code>，在初始化方法中会加载数据源的bean，这样就会通过<code>getSingleton</code>方法，得到三缓中datasource的对象工厂。  </p>
+</li>
+<li><p>对象工厂的方法是<code>getEarlyBeanReference</code>，即创建一个早期代理对象，创建代理就涉及到了<code>SeataAutoDataSourceProxyCreator</code>，具体为调用它的<code>getEarlyBeanReference</code>方法，如下所示：</p>
+ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">protected</span> Object <span class="title function_">getEarlyBeanReference</span><span class="params">(String beanName, RootBeanDefinition mbd, Object bean)</span> &#123;</span><br><span class="line">    <span class="type">Object</span> <span class="variable">exposedObject</span> <span class="operator">=</span> bean;</span><br><span class="line">    <span class="keyword">if</span> (!mbd.isSynthetic() &amp;&amp; hasInstantiationAwareBeanPostProcessors()) &#123;</span><br><span class="line">        <span class="keyword">for</span> (BeanPostProcessor bp : getBeanPostProcessors()) &#123;</span><br><span class="line">            <span class="keyword">if</span> (bp <span class="keyword">instanceof</span> SmartInstantiationAwareBeanPostProcessor) &#123;</span><br><span class="line">                <span class="type">SmartInstantiationAwareBeanPostProcessor</span> <span class="variable">ibp</span> <span class="operator">=</span> (SmartInstantiationAwareBeanPostProcessor) bp;</span><br><span class="line">                exposedObject = ibp.getEarlyBeanReference(exposedObject, beanName);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> exposedObject;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> Object <span class="title function_">getEarlyBeanReference</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">    <span class="type">Object</span> <span class="variable">cacheKey</span> <span class="operator">=</span> getCacheKey(bean.getClass(), beanName);</span><br><span class="line">    <span class="keyword">if</span> (!<span class="built_in">this</span>.earlyProxyReferences.contains(cacheKey)) &#123;</span><br><span class="line">        <span class="built_in">this</span>.earlyProxyReferences.add(cacheKey);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> wrapIfNecessary(bean, beanName, cacheKey);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> 由于它是<code>AbstractAutoProxyCreator</code>的子类，<strong>内部持有一个<code>earlyProxyReferences</code>集合，用来保存那些已代理过的早期对象</strong>。这里会先在<code>earlyProxyReferences</code>中插入一条记录，之后调用<code>wrapIfNecessary</code>方法创建代理对象。</p>
+</li>
+<li><p><code>DataSourceInitializerPostProcessor</code>的处理完毕，之后又轮到<code>SeataAutoDataSourceProxyCreator</code>执行后置处理方法，<strong>此时，它的<code>earlyProxyReferences</code>中已有一条<code>datasource</code>的记录，所以不会再去创建代理类，而是直接返回原对象</strong>，如下<code>postProcessAfterInitialization</code>方法所示：</p>
+ <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(<span class="meta">@Nullable</span> Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">    <span class="keyword">if</span> (bean != <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="type">Object</span> <span class="variable">cacheKey</span> <span class="operator">=</span> getCacheKey(bean.getClass(), beanName);</span><br><span class="line">        <span class="keyword">if</span> (!<span class="built_in">this</span>.earlyProxyReferences.contains(cacheKey)) &#123;</span><br><span class="line">            <span class="keyword">return</span> wrapIfNecessary(bean, beanName, cacheKey);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> bean;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>所有后置处理器处理完毕，初始化阶段结束，最终，一个没有被<code>SeataAutoDataSourceProxyCreator</code>包装过的数据源代理对象被<code>doCreateBean</code>方法返回。</p>
+<blockquote>
+<p>第4步产生的代理对象去哪里了？其实当时它进入了二缓，但<code>doCreateBean</code>实际返回的，是那个未被seata代理的对象，后续链路调用<code>addSingleton</code>方法时，会同步清理二级缓存，它也就消失了。</p>
+</blockquote>
+</li>
+</ol>
+<h2 id="根因分析"><a href="#根因分析" class="headerlink" title="根因分析"></a>根因分析</h2><p>上面的图中，引起问题的就是<code>DataSourceInitializerPostProcessor</code>，旧版应用启动时是没有这个的，看一下从哪里来。</p>
+<p>它来自SpringBoot，是被<code>DataSourceAutoConfiguration</code>间接加载的，<strong>但启动类里已经排除了数据源自动配置，这个PostProcessor根本不应该被加载</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 项目启动类</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@SpringBootApplication(exclude = &#123;DataSourceAutoConfiguration.class,</span></span><br><span class="line"><span class="meta">        GlobalTransactionAutoConfiguration.class,ErrorMvcAutoConfiguration.class&#125;)</span></span><br><span class="line"><span class="comment">//...</span></span><br></pre></td></tr></table></figure>
+
+<p>为了彻底查明问题，我又花了一段时间排查，最终发现了症结所在：  </p>
+<p>在SpringBoot 2.0的配置加载阶段，会遍历所有配置源，扫描其下的配置，最后把扫描到的配置合并为一个集合。在我们的旧版程序中，只存在项目的启动类A一个配置源，而新版因为更新了一个二方包依赖，里面携带了一个SpringBoot启动类B，其也会被当作一个配置源。<strong>由于这个启动类B中没有配置排除项，所以当把这两个配置源下的配置合并后，A所排除的那些自动配置就被B加回来了。</strong></p>
+<p>拿这个二方包的旧版对比，确定是新版的包中多了一个启动类。</p>
+<blockquote>
+<ul>
+<li>Spring官方并不鼓励在项目中存在多个启动类，从根本上来说应该尽量避免这种情况  </li>
+<li>SpringBoot 2.2之后，在配置扫描阶段使用了公用可传递的excludes，使得每个配置源下的exclude都会被计算进最终的结果，可以解决这个问题。</li>
+</ul>
+</blockquote>
+<p>与上级沟通过后最终决定排除多余的启动类，对项目影响最小。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ComponentScan(excludeFilters = @ComponentScan.Filter(</span></span><br><span class="line"><span class="meta">        type = FilterType.REGEX, pattern = &#123;&quot;com.example.SomeOtherApplication&quot;&#125;))</span></span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+<p>排除后数据源代理生效，一切正常。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/09/14/%E7%BA%BF%E7%A8%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%A4%84%E7%90%86%E4%B8%8D%E5%BD%93%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E9%94%99%E8%AF%AF%E9%97%AE%E9%A2%98/" rel="prev" title="线程上下文处理不当导致的数据错误问题">
+      <i class="fa fa-chevron-left"></i> 线程上下文处理不当导致的数据错误问题
+    </a></div>
+      <div class="post-nav-item"></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%87%E7%A8%8B%E5%88%86%E6%9E%90"><span class="nav-number">1.</span> <span class="nav-text">过程分析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">根因分析</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Sirius Shieh</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">5</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="mailto:sirius_shieh@163.com" title="E-Mail → mailto:sirius_shieh@163.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Sirius Shieh</span>
+</div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
