@@ -24,7 +24,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="元空间内存泄漏问题排查记录">
 <meta property="og:url" content="http://example.com/2023/06/20/%E5%85%83%E7%A9%BA%E9%97%B4%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E9%97%AE%E9%A2%98%E6%8E%92%E6%9F%A5%E8%AE%B0%E5%BD%95/index.html">
-<meta property="og:site_name" content="Sirius">
+<meta property="og:site_name" content="Sirius&#39;s Blog">
 <meta property="og:description" content="运维反馈线上某个应用的内存用量会一直缓慢增加，直至超过pod限制被oomKill，重启后照旧。第一反应是内存泄漏，于是首先打了内存dump分析，首先观察到堆内存用量小于设置的上限，接着看了一眼实例数较多的类，并没有发现明显可疑项（基本是String和Log4j的RingBuffer）。进一步查看配置，pod的内存限制给的比堆内存上限要高不少，既然能达到pod的上限，说明问题可能出在堆外。">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/Snipaste_2024-03-26_00-19-52.jpg">
@@ -48,7 +48,7 @@
   };
 </script>
 
-  <title>元空间内存泄漏问题排查记录 | Sirius</title>
+  <title>元空间内存泄漏问题排查记录 | Sirius's Blog</title>
   
 
 
@@ -99,7 +99,7 @@
 
     <a href="/" class="brand" rel="start">
       <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">Sirius</h1>
+      <h1 class="site-title">Sirius's Blog</h1>
       <span class="logo-line-after"><i></i></span>
     </a>
   </div>
@@ -162,7 +162,7 @@
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Sirius">
+      <meta itemprop="name" content="Sirius's Blog">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">

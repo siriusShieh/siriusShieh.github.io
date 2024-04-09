@@ -24,12 +24,12 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="多个启动类导致Seata数据源代理不生效的问题">
 <meta property="og:url" content="http://example.com/2024/02/03/%E5%A4%9A%E4%BD%99%E5%90%AF%E5%8A%A8%E7%B1%BB%E5%AF%BC%E8%87%B4Seata%E6%95%B0%E6%8D%AE%E6%BA%90%E4%BB%A3%E7%90%86%E4%B8%8D%E7%94%9F%E6%95%88%E7%9A%84%E9%97%AE%E9%A2%98/index.html">
-<meta property="og:site_name" content="Sirius">
+<meta property="og:site_name" content="Sirius&#39;s Blog">
 <meta property="og:description" content="前段时间，客户反映一个全局事务报错后，某个服务的数据没有回滚。一般Seata分支二阶段回滚会打印Phase two Rollbacking，日志中未见类似信息。查看Seata服务端的日志，发现该服务根本没有注册分支。分支注册由代理数据源执行，代理一般在SpringBoot启动时创建，会打印”Auto Proxy of [dataSource]”。观察启动日志中确实存在该信息，但调试时，发现程序走不">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/seata2230.drawio.png">
 <meta property="article:published_time" content="2024-02-03T08:52:28.000Z">
-<meta property="article:modified_time" content="2024-04-08T15:36:30.236Z">
+<meta property="article:modified_time" content="2024-04-09T13:39:21.202Z">
 <meta property="article:author" content="Sirius Shieh">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/seata2230.drawio.png">
@@ -47,7 +47,7 @@
   };
 </script>
 
-  <title>多个启动类导致Seata数据源代理不生效的问题 | Sirius</title>
+  <title>多个启动类导致Seata数据源代理不生效的问题 | Sirius's Blog</title>
   
 
 
@@ -98,7 +98,7 @@
 
     <a href="/" class="brand" rel="start">
       <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">Sirius</h1>
+      <h1 class="site-title">Sirius's Blog</h1>
       <span class="logo-line-after"><i></i></span>
     </a>
   </div>
@@ -161,7 +161,7 @@
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Sirius">
+      <meta itemprop="name" content="Sirius's Blog">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
@@ -192,18 +192,19 @@
         <p>前段时间，客户反映一个全局事务报错后，某个服务的数据没有回滚。一般Seata分支二阶段回滚会打印<code>Phase two Rollbacking</code>，日志中未见类似信息。查看Seata服务端的日志，发现该服务根本没有注册分支。<br>分支注册由代理数据源执行，代理一般在SpringBoot启动时创建，会打印”Auto Proxy of [dataSource]”。观察启动日志中确实存在该信息，但调试时，发现程序走不到<code>DataSourceProxy</code>上的断点。根据上述情况推测，代理确有创建，但注入到Service的过程出了问题。</p>
 <span id="more"></span>
 <h2 id="过程分析"><a href="#过程分析" class="headerlink" title="过程分析"></a>过程分析</h2><p>首先介绍下，Seata创建数据源代理靠的是<code>SeataAutoDataSourceProxyCreator</code>这个类，它属于后置处理器，在数据源bean初始化的后期调用，用Seata的切面创建原数据源对象的代理。</p>
-<p>经过一段时间的排查，我大致摸清了情况，有关数据源创建的简要流程见下图：</p>
+<p>本地启动准备了有问题的版本和一个无问题的旧版本，分别启动，打断点对比执行逻辑。经过一段时间的排查，终于大致理顺了思路，整理如下。</p>
+<p>数据源创建的简要流程图：</p>
 <p><img src="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/seata2230.drawio.png"></p>
 <p>下面沿着流程图解释具体发生了什么：</p>
 <ol>
-<li><p>有Service依赖数据源的bean，走创建逻辑。bean实例化后，先在三缓注册一个对象工厂，用来解决循环依赖。之后走属性赋值，初始化方法。</p>
+<li><p>数据源的生命周期开始。实例化后，先在三缓注册一个对象工厂，用来解决循环依赖。之后进行属性赋值和初始化。</p>
 </li>
-<li><p>执行完数据源的初始化方法后，遍历PostProcessors执行bean的后置处理，这时我发现**有问题的程序，比无问题的旧版多了一个后置处理器<code>DataSourceInitializerPostProcessor</code>**，且顺序排在<code>SeataAutoDataSourceProxyCreator</code>前，其方法如下所示：</p>
+<li><p>初始化后期，遍历PostProcessors执行bean的后置处理，这里发现，有问题的程序，比无问题的旧版多了一个后置处理器<code>DataSourceInitializerPostProcessor</code>，且顺序排在<code>SeataAutoDataSourceProxyCreator</code>前，其方法如下所示：</p>
  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.boot.autoconfigure.jdbc.DataSourceInitializerPostProcessor</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> Object <span class="title function_">postProcessAfterInitialization</span><span class="params">(Object bean, String beanName)</span></span><br><span class="line">        <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">    <span class="keyword">if</span> (bean <span class="keyword">instanceof</span> DataSource) &#123;</span><br><span class="line">        <span class="comment">// force initialization of this bean as soon as we see a DataSource</span></span><br><span class="line">        <span class="built_in">this</span>.beanFactory.getBean(DataSourceInitializerInvoker.class);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> bean;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
-<li><p>上述这个类通过<code>beanFactory</code>加载<code>DataSourceInitializerInvoker</code>的bean，这个类属于<code>InitializingBean</code>，在初始化方法中会加载数据源的bean，这样就会通过<code>getSingleton</code>方法，得到三缓中datasource的对象工厂。  </p>
+<li><p>这个新增的后置处理器通过<code>beanFactory</code>加载<code>DataSourceInitializerInvoker</code>的bean，这个类属于<code>InitializingBean</code>，在初始化方法中会加载数据源的bean，这样就通过<code>getSingleton</code>方法，得到了三缓中datasource的对象工厂。  </p>
 </li>
-<li><p>对象工厂的方法是<code>getEarlyBeanReference</code>，即创建一个早期代理对象，创建代理就涉及到了<code>SeataAutoDataSourceProxyCreator</code>，具体为调用它的<code>getEarlyBeanReference</code>方法，如下所示：</p>
+<li><p>对象工厂中定义的方法是<code>getEarlyBeanReference</code>，即创建一个早期代理对象，创建代理就涉及到了<code>SeataAutoDataSourceProxyCreator</code>，具体为调用它的<code>getEarlyBeanReference</code>方法，如下所示：</p>
  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">protected</span> Object <span class="title function_">getEarlyBeanReference</span><span class="params">(String beanName, RootBeanDefinition mbd, Object bean)</span> &#123;</span><br><span class="line">    <span class="type">Object</span> <span class="variable">exposedObject</span> <span class="operator">=</span> bean;</span><br><span class="line">    <span class="keyword">if</span> (!mbd.isSynthetic() &amp;&amp; hasInstantiationAwareBeanPostProcessors()) &#123;</span><br><span class="line">        <span class="keyword">for</span> (BeanPostProcessor bp : getBeanPostProcessors()) &#123;</span><br><span class="line">            <span class="keyword">if</span> (bp <span class="keyword">instanceof</span> SmartInstantiationAwareBeanPostProcessor) &#123;</span><br><span class="line">                <span class="type">SmartInstantiationAwareBeanPostProcessor</span> <span class="variable">ibp</span> <span class="operator">=</span> (SmartInstantiationAwareBeanPostProcessor) bp;</span><br><span class="line">                exposedObject = ibp.getEarlyBeanReference(exposedObject, beanName);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> exposedObject;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
  <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@Override</span></span><br><span class="line"><span class="keyword">public</span> Object <span class="title function_">getEarlyBeanReference</span><span class="params">(Object bean, String beanName)</span> <span class="keyword">throws</span> BeansException &#123;</span><br><span class="line">    <span class="type">Object</span> <span class="variable">cacheKey</span> <span class="operator">=</span> getCacheKey(bean.getClass(), beanName);</span><br><span class="line">    <span class="keyword">if</span> (!<span class="built_in">this</span>.earlyProxyReferences.contains(cacheKey)) &#123;</span><br><span class="line">        <span class="built_in">this</span>.earlyProxyReferences.add(cacheKey);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> wrapIfNecessary(bean, beanName, cacheKey);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p> 由于它是<code>AbstractAutoProxyCreator</code>的子类，<strong>内部持有一个<code>earlyProxyReferences</code>集合，用来保存那些已代理过的早期对象</strong>。这里会先在<code>earlyProxyReferences</code>中插入一条记录，之后调用<code>wrapIfNecessary</code>方法创建代理对象。</p>
@@ -221,17 +222,18 @@
 <p>它来自SpringBoot，是被<code>DataSourceAutoConfiguration</code>间接加载的，<strong>但启动类里已经排除了数据源自动配置，这个PostProcessor根本不应该被加载</strong></p>
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 项目启动类</span></span><br><span class="line"></span><br><span class="line"><span class="meta">@SpringBootApplication(exclude = &#123;DataSourceAutoConfiguration.class,</span></span><br><span class="line"><span class="meta">        GlobalTransactionAutoConfiguration.class,ErrorMvcAutoConfiguration.class&#125;)</span></span><br><span class="line"><span class="comment">//...</span></span><br></pre></td></tr></table></figure>
 
-<p>为了彻底查明问题，我又花了一段时间排查，最终发现了症结所在：  </p>
-<p>在SpringBoot 2.0的配置加载阶段，会遍历所有配置源，扫描其下的配置，最后把扫描到的配置合并为一个集合。在我们的旧版程序中，只存在项目的启动类A一个配置源，而新版因为更新了一个二方包依赖，里面携带了一个SpringBoot启动类B，其也会被当作一个配置源。<strong>由于这个启动类B中没有配置排除项，所以当把这两个配置源下的配置合并后，A所排除的那些自动配置就被B加回来了。</strong></p>
-<p>拿这个二方包的旧版对比，确定是新版的包中多了一个启动类。</p>
+<p>为了彻底查明问题，我又花了一段时间排查，最终发现了原因：  </p>
+<p>在启动阶段Spring加载配置时，会遍历所有配置源，扫描配置源下的配置，最后把扫描到的配置合并为一个集合。</p>
+<p>在我们的旧版程序中，只存在项目的启动类A一个配置源，而新版因为更新了一个二方包依赖，里面携带了一个SpringBoot启动类B，其也会被当作一个配置源。由于这个启动类B中没有配置排除项，所以当把这两个配置源下的配置合并后，A所排除的那些自动配置就被B加回来了，所以数据源自动配置下所定义的那些bean才会出现。</p>
+<p>拿这个二方包的旧版对比，也可以确定是新版的包中多了一个启动类。</p>
 <blockquote>
 <ul>
 <li>Spring官方并不鼓励在项目中存在多个启动类，从根本上来说应该尽量避免这种情况  </li>
 <li>SpringBoot 2.2之后，在配置扫描阶段使用了公用可传递的excludes，使得每个配置源下的exclude都会被计算进最终的结果，可以解决这个问题。</li>
 </ul>
 </blockquote>
-<p>与上级沟通过后最终决定排除多余的启动类，对项目影响最小。</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ComponentScan(excludeFilters = @ComponentScan.Filter(</span></span><br><span class="line"><span class="meta">        type = FilterType.REGEX, pattern = &#123;&quot;com.example.SomeOtherApplication&quot;&#125;))</span></span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+<p>项目SpringBoot版本为2.0，因基架团队暂时无法更新，与上级讨论后决定先排除引起问题的启动类，对项目影响最小。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@ComponentScan(excludeFilters = @ComponentScan.Filter(</span></span><br><span class="line"><span class="meta">        type = FilterType.REGEX, pattern = &#123;&quot;com.example.FunctionApplication&quot;&#125;))</span></span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
 <p>排除后数据源代理生效，一切正常。</p>
 
     </div>

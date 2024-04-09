@@ -24,7 +24,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="线程上下文处理不当导致的数据错误问题">
 <meta property="og:url" content="http://example.com/2023/09/14/%E7%BA%BF%E7%A8%8B%E4%B8%8A%E4%B8%8B%E6%96%87%E5%A4%84%E7%90%86%E4%B8%8D%E5%BD%93%E5%AF%BC%E8%87%B4%E7%9A%84%E6%95%B0%E6%8D%AE%E9%94%99%E8%AF%AF%E9%97%AE%E9%A2%98/index.html">
-<meta property="og:site_name" content="Sirius">
+<meta property="og:site_name" content="Sirius&#39;s Blog">
 <meta property="og:description" content="生产上某个外围系统反馈，我们系统给他们发送的数据字段中某个与租户有关的字段错乱，导致本来是X租户的数据跑到了Y租户上。获取这个字段的逻辑并不复杂，平时执行也很正常，只是隔一段时间偶然一笔会出问题。由于是偶发性问题，很难复现，我只能借助查看日志、代码埋点和走查进行分析。最终，我发现这个问题是由二方包中的一个bug引起的。">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://sirius-buck1.oss-cn-shenzhen.aliyuncs.com/blog/multitenancy.drawio%20(2).png">
@@ -47,7 +47,7 @@
   };
 </script>
 
-  <title>线程上下文处理不当导致的数据错误问题 | Sirius</title>
+  <title>线程上下文处理不当导致的数据错误问题 | Sirius's Blog</title>
   
 
 
@@ -98,7 +98,7 @@
 
     <a href="/" class="brand" rel="start">
       <span class="logo-line-before"><i></i></span>
-      <h1 class="site-title">Sirius</h1>
+      <h1 class="site-title">Sirius's Blog</h1>
       <span class="logo-line-after"><i></i></span>
     </a>
   </div>
@@ -161,7 +161,7 @@
     </span>
 
     <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Sirius">
+      <meta itemprop="name" content="Sirius's Blog">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
